@@ -1,0 +1,2 @@
+#!/bin/bash
+fission fn test --name db-inserter-fn --method POST --header "X-Auth-Token: 222b7564-a0f8-4d90-84a9-5a9f4684b3ea" --body='{"state": "active", "created_at": "2020-03-18 14:35:32", "hostname": "tester-ewr1-0", "facility": "ewr1", "creation_duration": 136.0, "operating_system": "ubuntu_16_04", "plan": "t1.small.x86", "updated_at": "2020-03-18 14:37:48", "uuid": "9da6510f-714e-46e8-917e-176951533a0e"}'
