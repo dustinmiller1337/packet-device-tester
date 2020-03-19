@@ -11,8 +11,7 @@ export PACKET_ORG_ID="erd6e156-e5fb-4e5b-b90e-090a055437ee"
 ## Usage
 ```bash 
 device_builder.py --facility <facility_list> --plan <device_plan> --os <operating_system>
-                  [--quantity <number>] [--api_key <api_key>] [--org_id <org_id>]
-                  [--project_name <project_name>]
+                  [--quantity <number>] [--api_key <api_key>] [--project_id <project_id>]
 ```
 If quantity is omitted only one device will be deployed. The default project name is `packet_device_tester`
 ## Options
@@ -28,10 +27,8 @@ If quantity is omitted only one device will be deployed. The default project nam
                                    Example: 100
   --api_key=API_KEY              Packet API Key. 
                                    Example: vuRQYrg2nLgSvoYuB8UYSh4mAHFACTHB
-  --org_id=ORG_ID                Packet Organization ID. 
+  --project_id=PROJECT_ID        Packet Project ID. 
                                    Example: ecd8e248-e2fb-4e5b-b90e-090a055437dd
-  --project_name=PROJECT_NAME    Project Name to be created. 
-                                   Example: my-best-project
 ```
 
 ## Getting results
