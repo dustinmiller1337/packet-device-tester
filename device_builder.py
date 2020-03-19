@@ -99,7 +99,12 @@ def create_devices(args, manager):
         for facility in args.facilities:
             hostname = "tester-{}-{}".format(facility, i)
             print("Creating {}".format(hostname))
-            devices.append(manager.create_device(args.project_id, hostname, args.plan, facility, args.os))
+            try:
+                devices.append(manager.create_device(args.project_id, hostname, args.plan, facility, args.os))
+            except packet.baseapi.Error as e:
+                print(e)
+                print("\tError creating device: {}. Skipping...".format(hostname))
+
     return devices
 
 
