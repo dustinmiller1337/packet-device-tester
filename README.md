@@ -6,7 +6,7 @@ You will also need your Packet API Key as well as your Organization ID.
 These can be passed in via the command line, but these can also be pulled from enviorment variables as follows:
 ```bash
 export PACKET_TOKEN="guRDYrg6nLgSvoZuB8UYSh5mAHFACTHR"
-export PACKET_ORG_ID="erd6e156-e5fb-4e5b-b90e-090a055437ee"
+export PACKET_PROJECT_ID=="erd6e156-e5fb-4e5b-b90e-090a055437ee"
 ```
 ## Usage
 ```bash 
