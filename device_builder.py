@@ -25,7 +25,7 @@ def parse_args():
     parser.add_option('--api_key', dest="api_key", action="store", default=None,
                       help="Packet API Key. Example: vuRQYrg2nLgSvoYuB8UYSh4mAHFACTHB")
     parser.add_option('--project_id', dest="project_id", action="store", default=None,
-                      help="Packet Organization ID. Example: ecd8e248-e2fb-4e5b-b90e-090a055437dd")
+                      help="Packet Project ID. Example: ecd8e248-e2fb-4e5b-b90e-090a055437dd")
     # TODO: There migth be a desire to not cleanup... Maybe I should add a --skip-cleanup flag.
 
     options, _ = parser.parse_args()
