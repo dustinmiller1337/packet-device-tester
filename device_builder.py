@@ -13,8 +13,7 @@ from datetime import datetime as dt
 def parse_args():
     parser = optparse.OptionParser(
         usage="\n\t%prog --facility <facility_list> --plan <device_plan> --os <operating_system>"
-              "\n\t\t\t[--quantity <number>] [--api_key <api_key>] [--org_id <org_id>]"
-              "\n\t\t\t[--project_name <project_name>]")
+              "\n\t\t\t[--quantity <number>] [--api_key <api_key>] [--project_id <project_id>]")
     parser.add_option('--facility', dest="facility", action="store",
                       help="List of facilities to deploy servers. Example: ewr1,sjc1")
     parser.add_option('--plan', dest="plan", action="store",
@@ -25,10 +24,9 @@ def parse_args():
                       help="Number of devices to deploy per facility. Example: 100")
     parser.add_option('--api_key', dest="api_key", action="store", default=None,
                       help="Packet API Key. Example: vuRQYrg2nLgSvoYuB8UYSh4mAHFACTHB")
-    parser.add_option('--org_id', dest="org_id", action="store", default=None,
+    parser.add_option('--project_id', dest="project_id", action="store", default=None,
                       help="Packet Organization ID. Example: ecd8e248-e2fb-4e5b-b90e-090a055437dd")
-    parser.add_option('--project_name', dest="project_name", action="store", default="packet_device_tester",
-                      help="Project Name to be created. Example: my-best-project")
+    # TODO: There migth be a desire to not cleanup... Maybe I should add a --skip-cleanup flag.
 
     options, _ = parser.parse_args()
     if not (options.facility and options.plan and options.os):
@@ -43,11 +41,11 @@ def parse_args():
         print("ERROR: API Key is required ether pass it in via the command line or export 'PACKET_TOKEN'")
         sys.exit(1)
 
-    if not options.org_id:
-        options.org_id = os.getenv('PACKET_ORG_ID')
+    if not options.project_id:
+        options.project_id = os.getenv('PACKET_PROJECT_ID')
 
-    if not options.api_key:
-        print("ERROR: Organization ID is required ether pass it in via the command line or export 'PACKET_ORG_ID'")
+    if not options.project_id:
+        print("ERROR: Project ID is required ether pass it in via the command line or export 'PACKET_PROJECT_ID'")
         sys.exit(1)
     try:
         options.quantity = int(options.quantity)
@@ -64,14 +62,12 @@ def authenticate(args):
     auth = False
     try:
         organizations = manager.list_organizations()
-        for org in organizations:
-            if org.id == args.org_id:
-                auth = True
+        auth = True
     except packet.baseapi.Error:
         auth = False
 
     if auth is False:
-        print("ERROR: Could not validate Auth Token or the Org ID does not belong to you.")
+        print("ERROR: Could not validate Auth Token.")
         sys.exit(1)
     return manager
 
@@ -82,26 +78,6 @@ def do_request(action, host, relative_url, headers, body):
     conn.request(action, relative_url, body_json, headers)
     response = conn.getresponse()
     return conn, response
-
-
-def create_project(args):
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "X-Auth-Token": args.api_key
-    }
-    body = {
-        "organization_id": args.org_id,
-        "name": args.project_name
-    }
-    _, response = do_request("POST", "api.packet.net", "/organizations/{}/projects".format(args.org_id),
-                             headers, body)
-    if response.status != 200 and response.status != 201:
-        print("Error creating project!!")
-        print("{}: {}".format(response.status, response.reason))
-        sys.exit(1)
-    project = json.loads(response.read().decode('utf-8'))
-    return project['id']
 
 
 def insert_record(body):
@@ -152,22 +128,54 @@ def poll_devices(args, manager, devices):
                 print("Deleting {}!".format(poll_device['hostname']))
                 poll_device.delete()
         sleep(1)
-    print("All devices are deleted, deleting project!")
-    project = manager.get_project(args.project_id)
-    project.delete()
+    print("All devices are deleted!")
+
+
+def validate_args(args, manager):
+    os_list = manager.list_operating_systems()
+    plan_list = manager.list_plans()
+    facility_list = manager.list_facilities()
+
+    os_valid = False
+    for op_system in os_list:
+        if op_system.slug == args.os:
+            os_valid = True
+            break
+    if os_valid is False:
+        print("ERROR: {} is not a valid operating system!".format(args.os))
+        sys.exit(1)
+
+    plan_valid = False
+    for plan in plan_list:
+        if plan.slug == args.plan or plan.name == args.plan:
+            plan_valid = True
+            break
+    if plan_valid is False:
+        print("ERROR: {} is not a valid plan!".format(args.plan))
+        sys.exit(1)
+
+    for site in args.facilities:
+        facility_valid = False
+        for facility in facility_list:
+            if facility.code == site:
+                facility_valid = True
+                break
+        if facility_valid is False:
+            print("ERROR: {} is not a valid facility!".format(site))
+            sys.exit(1)
 
 
 def main():
     args = parse_args()
-    print("Arguments look good!")
     manager = authenticate(args)
-    print("Authenticated successfully!")
-    args.project_id = create_project(args)
-    print("Created project!")
+    print("Authenticated successfully.")
+    validate_args(args, manager)
+    print("Command line arguments are valid.")
     devices = create_devices(args, manager)
     print("All devices created!")
     poll_devices(args, manager, devices)
-    print("All devices have finished!")
+    print("All devices have completed.")
+    print("Done!")
 
 
 if __name__ == "__main__":
