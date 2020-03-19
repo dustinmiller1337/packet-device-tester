@@ -27,7 +27,7 @@ def parse_args():
                       help="Packet API Key. Example: vuRQYrg2nLgSvoYuB8UYSh4mAHFACTHB")
     parser.add_option('--org_id', dest="org_id", action="store", default=None,
                       help="Packet Organization ID. Example: ecd8e248-e2fb-4e5b-b90e-090a055437dd")
-    parser.add_option('--project_name', dest="project_name", action="store", default="python_tester",
+    parser.add_option('--project_name', dest="project_name", action="store", default="packet_device_tester",
                       help="Project Name to be created. Example: my-best-project")
 
     options, _ = parser.parse_args()
@@ -128,7 +128,6 @@ def create_devices(args, manager):
 
 
 def poll_devices(args, manager, devices):
-    insert = []
     while len(devices) != 0:
         for device in devices:
             print("Checking if {} is active".format(device['hostname']))
