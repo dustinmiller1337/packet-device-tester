@@ -2,8 +2,11 @@
 This repo contains a python script: `device_builder.py`. That will create devices of a certain `plan`, `quantity`, & `operating system` into given `facilities`. If all goes well all resources will be cleaned up automatically. You must be `Packet Staff` to us this tool.
 ## Prerequisites
 There is only one python module needed to run this script: `packet-python`
+
 You will also need your Packet API Key, Consumer Token, & Project ID.
+
 **Note:** The `PACKET_CONSUMER_TOKEN` can be retrieved from the staff portal under `Settings > Applications > Packet Portal`
+
 These can be passed in via the command line, but these can also be pulled from enviorment variables as follows:
 ```bash
 export PACKET_AUTH_TOKEN="guRDYrg6nLgSvoZuB8UYSh5mAHFACTHR"
@@ -21,7 +24,7 @@ device_builder.py --facility <facility_list> --plan <device_plan> --os <operatin
 * If ***quantity*** is **all**, every device in each facility will be deployed.
 * If ***api_key***, ***project_id***, or ***consumer_token*** are omitted, they are expected to be exported as shown above.
 ## Options
-  ```bash
+```bash
 Options:
   -h, --help                          show this help message and exit
   --facility=FACILITY                 List of facilities to deploy servers. Example: ewr1,sjc1
