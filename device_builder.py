@@ -13,7 +13,8 @@ from datetime import datetime as dt
 def parse_args():
     parser = optparse.OptionParser(
         usage="\n\t%prog --facility <facility_list> --plan <device_plan> --os <operating_system>"
-              "\n\t\t\t[--quantity <number>] [--api_key <api_key>] [--project_id <project_id>]")
+              "\n\t\t\t  [--quantity <number>] [--api_key <api_key>] [--project_id <project_id>]"
+              "\n\t\t\t  [--consumer_token <consumer_token>")
     parser.add_option('--facility', dest="facility", action="store",
                       help="List of facilities to deploy servers. Example: ewr1,sjc1")
     parser.add_option('--plan', dest="plan", action="store",
@@ -26,6 +27,9 @@ def parse_args():
                       help="Packet API Key. Example: vuRQYrg2nLgSvoYuB8UYSh4mAHFACTHB")
     parser.add_option('--project_id', dest="project_id", action="store", default=None,
                       help="Packet Project ID. Example: ecd8e248-e2fb-4e5b-b90e-090a055437dd")
+    parser.add_option('--consumer_token', dest="consumer_token", action="store", default=None,
+                      help="Packet Consumer Token. "
+                           "Example: 8wtcigw6j1px9obscksorhpn48gz3evbgoqizcnsm7t7wdsjfmy00a3ng9p8t1d4")
     # TODO: There migth be a desire to not cleanup... Maybe I should add a --skip-cleanup flag.
 
     options, _ = parser.parse_args()
@@ -35,10 +39,18 @@ def parse_args():
         sys.exit(1)
 
     if not options.api_key:
-        options.api_key = os.getenv('PACKET_TOKEN')
+        options.api_key = os.getenv('PACKET_AUTH_TOKEN')
 
     if not options.api_key:
-        print("ERROR: API Key is required ether pass it in via the command line or export 'PACKET_TOKEN'")
+        print("ERROR: API Key is required ether pass it in via the command line or export 'PACKET_AUTH_TOKEN'")
+        sys.exit(1)
+
+    if not options.consumer_token:
+        options.consumer_token = os.getenv('PACKET_CONSUMER_TOKEN')
+
+    if not options.consumer_token:
+        print("ERROR: Consumer Token is required ether pass it in via the command line or export "
+              "'PACKET_CONSUMER_TOKEN'")
         sys.exit(1)
 
     if not options.project_id:
@@ -47,35 +59,47 @@ def parse_args():
     if not options.project_id:
         print("ERROR: Project ID is required ether pass it in via the command line or export 'PACKET_PROJECT_ID'")
         sys.exit(1)
+
     try:
         options.quantity = int(options.quantity)
     except ValueError:
-        print("ERROR: Quantity must be a valid integer. Example: 5")
-        sys.exit(1)
-    # TODO: We need to validate user input that things exist... Operating System, Plan, Facility, etc...
+        if options.quantity.lower() == 'all':
+            options.all = True
+        else:
+            print("ERROR: Quantity must be a valid integer. Example: 5")
+            sys.exit(1)
     options.facilities = options.facility.split(",")
     return options
 
 
 def authenticate(args):
-    manager = packet.Manager(auth_token=args.api_key)
-    auth = False
+    headers = {
+        "Accept": "application/json",
+        "X-Auth-Token": args.api_key,
+        "X-Consumer-Token": args.consumer_token,
+        "X-Packet-Staff": "true"
+    }
     try:
-        organizations = manager.list_organizations()
-        auth = True
-    except packet.baseapi.Error:
-        auth = False
-
-    if auth is False:
+        _, response = do_request("GET", "api.packet.net", "/staff/labels", headers, "")
+        if response.status != 200 and response.status != 201:
+            print("ERROR: Could not validate Auth Token.")
+            sys.exit(1)
+        else:
+            manager = packet.Manager(auth_token=args.api_key)
+    except ValueError:
         print("ERROR: Could not validate Auth Token.")
         sys.exit(1)
+
     return manager
 
 
 def do_request(action, host, relative_url, headers, body):
     conn = httplib.HTTPSConnection(host)
-    body_json = json.JSONEncoder().encode(body)
-    conn.request(action, relative_url, body_json, headers)
+    if body == "":
+        the_json = body
+    else:
+        the_json = json.JSONEncoder().encode(body)
+    conn.request(action, relative_url, the_json, headers)
     response = conn.getresponse()
     return conn, response
 
@@ -95,9 +119,16 @@ def insert_record(body):
 
 def create_devices(args, manager):
     devices = []
-    for i in range(args.quantity):
-        for facility in args.facilities:
-            hostname = "tester-{}-{}".format(facility, i)
+
+    for facility in args.facilities:
+        if args.all is True:
+            quantity = args.max_quantity[facility]
+        else:
+            quantity = args.quantity
+        for i in range(quantity):
+            mod_plan = args.plan.replace("_", "-").replace(".", "-")
+            mod_os = args.os.replace("_", "-").replace(".", "-")
+            hostname = "{}-{}-{}-{}".format(facility, mod_plan, mod_os, i)
             print("Creating {}".format(hostname))
             try:
                 devices.append(manager.create_device(args.project_id, hostname, args.plan, facility, args.os))
@@ -123,7 +154,7 @@ def poll_devices(args, manager, devices):
                     'state': poll_device['state'],
                     'hostname': poll_device['hostname'],
                     'facility': poll_device['facility']['code'],
-                    'plan': poll_device['plan']['slug'],
+                    'plan': poll_device['plan']['name'],
                     'operating_system': poll_device['operating_system']['slug'],
                     'created_at': create.strftime('%Y-%m-%d %H:%M:%S'),
                     'updated_at': finish.strftime('%Y-%m-%d %H:%M:%S'),
@@ -153,6 +184,7 @@ def validate_args(args, manager):
     plan_valid = False
     for plan in plan_list:
         if plan.slug == args.plan or plan.name == args.plan:
+            args.plan = plan.slug
             plan_valid = True
             break
     if plan_valid is False:
@@ -168,6 +200,35 @@ def validate_args(args, manager):
         if facility_valid is False:
             print("ERROR: {} is not a valid facility!".format(site))
             sys.exit(1)
+
+    if args.all is True:
+        args.quantity = {}
+        args.max_quantity = get_max(args)
+
+
+def get_max(args):
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-Auth-Token": args.api_key,
+        "X-Consumer-Token": args.consumer_token,
+        "X-Packet-Staff": "true"
+    }
+    _, response = do_request("GET", "api.packet.net", "/capacity", headers, "")
+    if response.status != 200 and response.status != 201:
+        print("ERROR: Could not get capcity...")
+        sys.exit(1)
+
+    response_body = json.loads(response.read().decode('utf-8'))
+    device_max = {}
+    for facility in args.facilities:
+        try:
+            device_max[facility] = response_body['capacity'][facility][args.plan]['available_servers']
+        except ValueError:
+            print("Plan: {} doesn't seem to be valid for Facility: {}. Skipping Facility.".format(args.plan, facility))
+            device_max[facility] = 0
+
+    return device_max
 
 
 def main():

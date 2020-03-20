@@ -1,22 +1,55 @@
 import pymysql.cursors
 import json
+from http import client as httplib
 from flask import request
 from flask import Response
 
 
-def main():
-    token = '222b7564-a0f8-4d90-84a9-5a9f4684b3ea'
-    x_auth_token = request.headers['X-Auth-Token']
+def do_request(action, host, relative_url, headers, body):
+    conn = httplib.HTTPSConnection(host)
+    if body == "":
+        the_json = body
+    else:
+        the_json = json.JSONEncoder().encode(body)
+    conn.request(action, relative_url, the_json, headers)
+    response = conn.getresponse()
+    return conn, response
+
+
+def authenticate(x_auth_token, x_consumer_token, x_packet_staff):
+    headers = {
+        "Accept": "application/json",
+        "X-Auth-Token": x_auth_token,
+        "X-Consumer-Token": x_consumer_token,
+        "X-Packet-Staff": x_packet_staff
+    }
     try:
-        # Validating JSON
+        _, response = do_request("GET", "api.packet.net", "/staff/labels", headers, "")
+        if response.status != 200 and response.status != 201:
+            return False
+    except ValueError:
+        return False
+
+    return True
+
+
+def main():
+    try:
         body = json.loads(request.get_data().decode('utf-8'))
     except Exception as e:
         return Response('{"error":"Body must be valid JSON", "raw_error": "' + e.args[0] + '"}',
                         status=404, mimetype='application/json')
-    if x_auth_token != token:
-        resp = Response('{"Unauthorized": "Check your X-Auth-Token"}')
-        resp.status_code = 401
-        return resp
+    try:
+        x_auth_token = request.headers['X-Auth-Token']
+        x_consumer_token = request.headers['X-Consumer-Token']
+        x_packet_staff = request.headers['X-Packet-Staff']
+        authed = authenticate(x_auth_token, x_consumer_token, x_packet_staff)
+    except Exception as e:
+        return Response('{"Unauthorized": "Check your X-Auth-Token, X-Consumer-Token, & X-Packet-Staff", '
+                        '"raw_error": "' + e.args[0] + '"}', status=401, mimetype='application/json')
+    if authed is False:
+        return Response('{"Unauthorized": "Check your X-Auth-Token, X-Consumer-Token, & X-Packet-Staff"}',
+                        status=401, mimetype='application/json')
 
     connection = pymysql.connect(host='mysql.stats.svc.us-central-1.local',
                                  user='root',
