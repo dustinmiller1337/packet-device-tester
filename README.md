@@ -42,7 +42,7 @@ Results are stored in a MySQL database on a Kubernetes node. Grafana has been de
 
 # TODO
 * Build some logic to stop checking if servers are finished after X time
-  * This should be an overrideable timout with a commandline arg somehting like: --timeout 3600
+  * This should be an overrideable timout with a commandline arg somehting like: `--timeout 3600`
 * Start breaking servers during the provisioning process and see what happens...
   * We should then build in error handling and insert these errors into the DB (Different table?)
 * Some work has been started on putting real authentication into the db_inserter
