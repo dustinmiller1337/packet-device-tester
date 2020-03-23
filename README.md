@@ -13,24 +13,25 @@ export PACKET_AUTH_TOKEN="guRDYrg6nLgSvoZuB8UYSh5mAHFACTHR"
 export PACKET_CONSUMER_TOKEN="8wtcigw6j1px9obscksorhpn48gz3evbgoqizcnsm7t7wdsjfmy00a3ng9p8t1d4"
 export PACKET_PROJECT_ID="erd6e156-e5fb-4e5b-b90e-090a055437ee"
 ```
-## Usage
+## Usage:
 ```bash 
 device_builder.py --facility <facility_list> --plan <device_plan> --os <operating_system>
-                  [--quantity <number>] [--api_key <api_key>] [--project_id <project_id>]
-                  [--consumer_token <consumer_token>
+                  [--quantity <number>] [--timeout <time_seconds> [--api_key <api_key>]
+                  [--project_id <project_id>] [--consumer_token <consumer_token>
 ```
 ### Notes:
 * If ***quantity*** is omitted, only one device will be deployed.
 * If ***quantity*** is **all**, every device in each facility will be deployed.
+* If ***timeout*** is omitted, the default timeout will be 15minutes
 * If ***api_key***, ***project_id***, or ***consumer_token*** are omitted, they are expected to be exported as shown above.
-## Options
+## Options:
 ```bash
-Options:
   -h, --help                          show this help message and exit
   --facility=FACILITY                 List of facilities to deploy servers. Example: ewr1,sjc1
   --plan=PLAN                         Device plan to deploy. Example: c3.small.x86
   --os=OS                             Operating System to deploy on the Device. Example: ubuntu_18_04
   --quantity=QUANTITY                 Number of devices to deploy per facility. Example: 100
+  --timeout=TIMEOUT                   Amount of time to wait fo devices to become active. Example: 25
   --api_key=API_KEY                   Packet API Key. Example: vuRQYrg2nLgSvoYuB8UYSh4mAHFACTHB
   --project_id=PROJECT_ID             Packet Project ID. Example: ecd8e248-e2fb-4e5b-b90e-090a055437dd
   --consumer_token=CONSUMER_TOKEN     Packet Consumer Token. Example: 8wtcigw6j1px9obscksorhpn48gz3evbgoqizcnsm7t7wdsjfmy00a3ng9p8t1d4
