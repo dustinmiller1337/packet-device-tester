@@ -28,24 +28,24 @@ def pretty_sleep(seconds):
 
 def parse_args():
     parser = optparse.OptionParser(
-        usage="\n\t%prog --facility <facility_list> --plan <device_plan> --os <operating_system>"
-              "\n\t\t\t  [--quantity <number>] [--timeout <time_seconds> [--api_key <api_key>]"
-              "\n\t\t\t  [--project_id <project_id>] [--consumer_token <consumer_token>")
-    parser.add_option('--facility', dest="facility", action="store",
+        usage="\n\t%prog -f <facility_list> -p <device_plan> -o <operating_system>"
+              "\n\t\t\t  [-q <number>] [-t <time_seconds> [-a <api_key>]"
+              "\n\t\t\t  [-i <project_id>] [-c <consumer_token>")
+    parser.add_option('-f', '--facility', dest="facility", action="store",
                       help="List of facilities to deploy servers. Example: ewr1,sjc1")
-    parser.add_option('--plan', dest="plan", action="store",
+    parser.add_option('-p', '--plan', dest="plan", action="store",
                       help="Device plan to deploy. Example: c3.small.x86")
-    parser.add_option('--os', dest="os", action="store",
+    parser.add_option('-o', '--os', dest="os", action="store",
                       help="Operating System to deploy on the Device. Example: ubuntu_18_04")
-    parser.add_option('--quantity', dest="quantity", action="store", default=1,
+    parser.add_option('-q', '--quantity', dest="quantity", action="store", default=1,
                       help="Number of devices to deploy per facility. Example: 100")
-    parser.add_option('--timeout', dest="timeout", action="store", default=15,
+    parser.add_option('-t', '--timeout', dest="timeout", action="store", default=15,
                       help="Amount of time to wait fo devices to become active. Example: 25")
-    parser.add_option('--api_key', dest="api_key", action="store", default=None,
+    parser.add_option('-a', '--api_key', dest="api_key", action="store", default=None,
                       help="Packet API Key. Example: vuRQYrg2nLgSvoYuB8UYSh4mAHFACTHB")
-    parser.add_option('--project_id', dest="project_id", action="store", default=None,
+    parser.add_option('-i', '--project_id', dest="project_id", action="store", default=None,
                       help="Packet Project ID. Example: ecd8e248-e2fb-4e5b-b90e-090a055437dd")
-    parser.add_option('--consumer_token', dest="consumer_token", action="store", default=None,
+    parser.add_option('-c', '--consumer_token', dest="consumer_token", action="store", default=None,
                       help="Packet Consumer Token. "
                            "Example: 8wtcigw6j1px9obscksorhpn48gz3evbgoqizcnsm7t7wdsjfmy00a3ng9p8t1d4")
     # TODO: There migth be a desire to not cleanup... Maybe I should add a --skip-cleanup flag.
