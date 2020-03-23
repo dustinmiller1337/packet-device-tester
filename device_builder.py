@@ -5,16 +5,32 @@ import sys
 import packet
 import os
 import json
+from time import time
 from time import sleep
 from http import client as httplib
 from datetime import datetime as dt
 
 
+def spinning_cursor():
+    while True:
+        for cursor in '|/-\\':
+            yield cursor
+
+
+def pretty_sleep(seconds):
+    spinner = spinning_cursor()
+    for _ in range(int(round(seconds * 10))):
+        sys.stdout.write(next(spinner))
+        sys.stdout.flush()
+        sleep(0.1)
+        sys.stdout.write('\b')
+
+
 def parse_args():
     parser = optparse.OptionParser(
         usage="\n\t%prog --facility <facility_list> --plan <device_plan> --os <operating_system>"
-              "\n\t\t\t  [--quantity <number>] [--api_key <api_key>] [--project_id <project_id>]"
-              "\n\t\t\t  [--consumer_token <consumer_token>")
+              "\n\t\t\t  [--quantity <number>] [--timeout <time_seconds> [--api_key <api_key>]"
+              "\n\t\t\t  [--project_id <project_id>] [--consumer_token <consumer_token>")
     parser.add_option('--facility', dest="facility", action="store",
                       help="List of facilities to deploy servers. Example: ewr1,sjc1")
     parser.add_option('--plan', dest="plan", action="store",
@@ -23,6 +39,8 @@ def parse_args():
                       help="Operating System to deploy on the Device. Example: ubuntu_18_04")
     parser.add_option('--quantity', dest="quantity", action="store", default=1,
                       help="Number of devices to deploy per facility. Example: 100")
+    parser.add_option('--timeout', dest="timeout", action="store", default=15,
+                      help="Amount of time to wait fo devices to become active. Example: 25")
     parser.add_option('--api_key', dest="api_key", action="store", default=None,
                       help="Packet API Key. Example: vuRQYrg2nLgSvoYuB8UYSh4mAHFACTHB")
     parser.add_option('--project_id', dest="project_id", action="store", default=None,
@@ -59,15 +77,20 @@ def parse_args():
     if not options.project_id:
         print("ERROR: Project ID is required ether pass it in via the command line or export 'PACKET_PROJECT_ID'")
         sys.exit(1)
-
+    options.all = False
     try:
         options.quantity = int(options.quantity)
-    except ValueError:
+    except:
         if options.quantity.lower() == 'all':
             options.all = True
         else:
             print("ERROR: Quantity must be a valid integer. Example: 5")
             sys.exit(1)
+    try:
+        options.timeout = int(options.timeout)
+    except:
+        print("ERROR: Timeout must be a valid integer. Example: 25")
+        sys.exit(1)
     options.facilities = options.facility.split(",")
     return options
 
@@ -86,7 +109,7 @@ def authenticate(args):
             sys.exit(1)
         else:
             manager = packet.Manager(auth_token=args.api_key)
-    except ValueError:
+    except:
         print("ERROR: Could not validate Auth Token.")
         sys.exit(1)
 
@@ -134,21 +157,34 @@ def create_devices(args, manager):
                 devices.append(manager.create_device(args.project_id, hostname, args.plan, facility, args.os))
             except packet.baseapi.Error as e:
                 print(e)
-                print("\tError creating device: {}. Skipping...".format(hostname))
+                print("\tAPI error creating device: {}. Skipping...".format(hostname))
+            except:
+                print("Unknown error creating device: {}. Skipping...".format(hostname))
+            pretty_sleep(0.5)
 
     return devices
 
 
 def poll_devices(args, manager, devices):
+    timeout = time() + (args.timeout * 60)
     while len(devices) != 0:
+        print("Checking if devices are active. {} devices left...".format(len(devices)))
         for device in devices:
             print("Checking if {} is active".format(device['hostname']))
-            poll_device = manager.get_device(device['id'])
+            try:
+                poll_device = manager.get_device(device['id'])
+            except:
+                print("Failed to find device with id: {}. Skipping Device. "
+                      "This may require manual cleanup".format(device['id']))
+                devices.remove(device)
+                # TODO: Insert something into the Database with the info we've gathered...
+                next
+
             if poll_device['state'] == 'active':
                 print("{} is active!".format(poll_device['hostname']))
                 create = dt.strptime(poll_device['created_at'], "%Y-%m-%dT%H:%M:%SZ")
                 finish = dt.strptime(poll_device['updated_at'], "%Y-%m-%dT%H:%M:%SZ")
-                duration = (finish-create).total_seconds()
+                duration = (finish - create).total_seconds()
                 insert_record({
                     'uuid': poll_device['id'],
                     'state': poll_device['state'],
@@ -163,8 +199,49 @@ def poll_devices(args, manager, devices):
                 devices.remove(device)
                 print("Deleting {}!".format(poll_device['hostname']))
                 poll_device.delete()
-        sleep(1)
-    print("All devices are deleted!")
+            elif poll_device['state'] in ('deprovisioning', 'failed', 'inactive'):
+                print("Devices is in state: {}. Skipping Device. "
+                      "This may require manual cleanup".format(device['id']))
+                devices.remove(device)
+                # TODO: Insert something into the Database with the info we've gathered...
+            pretty_sleep(0.5)
+        if time() > timeout:
+            print("The following devices have timedout after {} seconds. "
+                  "You may need to investigate: {}".format(args.timeout, devices))
+            timeout_devices(manager, devices)
+            break
+        else:
+            seconds = (timeout - time())
+            minutes, seconds = divmod(seconds, 60)
+            print("{}:{} until timeout...".format(round(minutes), round(seconds)))
+        print("Will check again in 10 seconds...")
+        pretty_sleep(10)
+
+
+def timeout_devices(manager, devices):
+    for device in devices:
+        try:
+            poll_device = manager.get_device(device['id'])
+        except:
+            print("Failed to find device with id: {}. Skipping Device. "
+                  "This may require manual cleanup".format(device['id']))
+            devices.remove(device)
+            # TODO: Insert something into the Database with the info we've gathered...
+            next
+        create = dt.strptime(poll_device['created_at'], "%Y-%m-%dT%H:%M:%SZ")
+        finish = time()
+        duration = (finish - create).total_seconds()
+        insert_record({
+            'uuid': poll_device['id'],
+            'state': "timedout",
+            'hostname': poll_device['hostname'],
+            'facility': poll_device['facility']['code'],
+            'plan': poll_device['plan']['name'],
+            'operating_system': poll_device['operating_system']['slug'],
+            'created_at': create.strftime('%Y-%m-%d %H:%M:%S'),
+            'updated_at': finish.strftime('%Y-%m-%d %H:%M:%S'),
+            'creation_duration': duration
+        })
 
 
 def validate_args(args, manager):
@@ -224,7 +301,7 @@ def get_max(args):
     for facility in args.facilities:
         try:
             device_max[facility] = response_body['capacity'][facility][args.plan]['available_servers']
-        except ValueError:
+        except:
             print("Plan: {} doesn't seem to be valid for Facility: {}. Skipping Facility.".format(args.plan, facility))
             device_max[facility] = 0
 
@@ -239,6 +316,9 @@ def main():
     print("Command line arguments are valid.")
     devices = create_devices(args, manager)
     print("All devices created!")
+    print("Sleeping 30 seconds before polling...")
+    pretty_sleep(30)
+    print("Polling Devices...")
     poll_devices(args, manager, devices)
     print("All devices have completed.")
     print("Done!")
