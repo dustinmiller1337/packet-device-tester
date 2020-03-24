@@ -14,7 +14,7 @@ export PACKET_CONSUMER_TOKEN="8wtcigw6j1px9obscksorhpn48gz3evbgoqizcnsm7t7wdsjfm
 export PACKET_PROJECT_ID="erd6e156-e5fb-4e5b-b90e-090a055437ee"
 ```
 ## Usage:
-```bash 
+```bash
   device_builder.py -f <facility_list> -p <device_plan> -o <operating_system>
                     [-q <number>] [-t <time_seconds> [-a <api_key>]
                     [-i <project_id>] [-c <consumer_token>
@@ -31,7 +31,7 @@ export PACKET_PROJECT_ID="erd6e156-e5fb-4e5b-b90e-090a055437ee"
   -p PLAN, --plan=PLAN                                      Device plan to deploy. Example: c3.small.x86
   -o OS, --os=OS                                            Operating System to deploy on the Device. Example: ubuntu_18_04
   -q QUANTITY, --quantity=QUANTITY                          Number of devices to deploy per facility. Example: 100
-  -t TIMEOUT, --timeout=TIMEOUT                             Amount of time to wait fo devices to become active. Example: 25
+  -t TIMEOUT, --timeout=TIMEOUT                             Amount of time to wait for devices to become active. Example: 25
   -a API_KEY, --api_key=API_KEY                             Packet API Key. Example: vuRQYrg2nLgSvoYuB8UYSh4mAHFACTHB
   -i PROJECT_ID, --project_id=PROJECT_ID                    Packet Project ID. Example: ecd8e248-e2fb-4e5b-b90e-090a055437dd
   -c CONSUMER_TOKEN, --consumer_token=CONSUMER_TOKEN        Packet Consumer Token. Example: 8wtcigw6j1px9obscksorhpn48gz3evbgoqizcnsm7t7wdsjfmy00a3ng9p8t1d4
