@@ -40,7 +40,7 @@ def parse_args():
     parser.add_option('-q', '--quantity', dest="quantity", action="store", default=1,
                       help="Number of devices to deploy per facility. Example: 100")
     parser.add_option('-t', '--timeout', dest="timeout", action="store", default=15,
-                      help="Amount of time to wait fo devices to become active. Example: 25")
+                      help="Amount of time to wait for devices to become active. Example: 25")
     parser.add_option('-a', '--api_key', dest="api_key", action="store", default=None,
                       help="Packet API Key. Example: vuRQYrg2nLgSvoYuB8UYSh4mAHFACTHB")
     parser.add_option('-i', '--project_id', dest="project_id", action="store", default=None,
